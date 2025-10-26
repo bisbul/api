@@ -1,4 +1,4 @@
-name = "bisbul-api"
+name = "apibisbul"
 main = "worker.js"
 compatibility_date = "2025-10-26"
 
