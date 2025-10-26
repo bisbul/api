@@ -1,0 +1,11 @@
+name = "bisbul-api"
+main = "worker.js"
+compatibility_date = "2025-10-26"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bisbul"
+database_id = "56ebe41b-549f-49d1-b610-6237b99bf366"
+
+[vars]
+API_KEY = "rahasiaku123"   # wajib untuk tulis & /sql
