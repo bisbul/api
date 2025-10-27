@@ -72,39 +72,42 @@ export default {
 
 /* ===== Core CRUD (dinamis) ===== */
 async function list(env, req, table, q) {
-  await ensureTable(env, table);
-  const page = Math.max(1, Number(q.get("page") || 1));
-  const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") || 10)));
-  const offset = (page - 1) * pageSize;
-  const search = (q.get("search") || "").trim();
+  await ensureTable(env, table);
+  const page = Math.max(1, Number(q.get("page") || 1));
+  const pageSize = Math.min(100, Math.max(1, Number(q.get("page_size") || 10)));
+  const offset = (page - 1) * pageSize;
+  const search = (q.get("search") || "").trim();
 
-  const cols = await columns(env, table);
-  const likeCols = cols.filter(c => /name|email|title|description/i.test(c));
-  const where = [];
-  const bind = [];
-  if (search && likeCols.length) {
-    const ors = likeCols.map(c => `${escapeId(c)} LIKE ?`).join(" OR ");
-    where.push(`(${ors})`);
-    likeCols.forEach(() => bind.push(`%${search}%`));
-  }
+  const cols = await columns(env, table);
+  // KOREKSI DINAMIS: Mencari di SEMUA kolom yang ada di tabel, KECUALI 'id' (Primary Key).
+  // Ini memastikan tabel baru pun otomatis memiliki fitur pencarian.
+  const likeCols = cols.filter(c => c !== 'id');
+  
+  const where = [];
+  const bind = [];
+  
+  if (search && likeCols.length) {
+    const ors = likeCols.map(c => `${escapeId(c)} LIKE ?`).join(" OR ");
+    where.push(`(${ors})`);
+    likeCols.forEach(() => bind.push(`%${search}%`));
+  }
 
-  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const sqlData  = `SELECT * FROM ${escapeId(table)} ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
-  const sqlCount = `SELECT COUNT(*) as total FROM ${escapeId(table)} ${whereSql}`;
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const sqlData  = `SELECT * FROM ${escapeId(table)} ${whereSql} ORDER BY id DESC LIMIT ? OFFSET ?`;
+  const sqlCount = `SELECT COUNT(*) as total FROM ${escapeId(table)} ${whereSql}`;
 
-  const [data, cnt] = await Promise.all([
-    env.DB.prepare(sqlData).bind(...bind, pageSize, offset).all(),
-    env.DB.prepare(sqlCount).bind(...bind).first()
-  ]);
+  const [data, cnt] = await Promise.all([
+    env.DB.prepare(sqlData).bind(...bind, pageSize, offset).all(),
+    env.DB.prepare(sqlCount).bind(...bind).first()
+  ]);
 
-  return ok({
-    ok: true,
-    page, page_size: pageSize,
-    total: Number(cnt?.total || 0),
-    items: data.results || []
-  }, req);
+  return ok({
+    ok: true,
+    page, page_size: pageSize,
+    total: Number(cnt?.total || 0),
+    items: data.results || []
+  }, req);
 }
-
 async function detail(env, req, table, id) {
   await ensureTable(env, table);
   const row = await env.DB.prepare(
